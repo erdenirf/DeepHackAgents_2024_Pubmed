@@ -6,26 +6,21 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 import app.keyboards as kb
 from app.languages import Language
+from app.config import URL
 # from app.middlewares import WebHook
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.fsm import StatesGroup, State
 import os
 from dotenv import load_dotenv
 
-URL = os.getenv("URL")
-
-storage = MemoryStorage()
+SERVE_URL = URL
 
 router = Router()
 
-# router.message(WebHook)
-
-class ChatState(StatesGroup):
-    waiting_for_message = State()
+is_chatting = False
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
-    if await state.get_state() == ChatState.waiting_for_message:
+    global is_chatting
+    if is_chatting:
         await message.answer(Language(**await state.get_data()).get_string('chat_mode_help'))
     else:
         await state.update_data(language='Eng')
@@ -33,14 +28,16 @@ async def cmd_start(message: Message, state: FSMContext):
 
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, state: FSMContext):
-    if await state.get_state() == ChatState.waiting_for_message:
+    global is_chatting
+    if is_chatting:
         await message.answer(Language(**await state.get_data()).get_string('chat_mode_help'))
     else:
         await message.answer(Language(**await state.get_data()).get_string('welcome'), reply_markup=await kb.main(state))
 
 @router.message(Command("help"))
 async def cmd_help(message: Message, state: FSMContext):
-    if await state.get_state() == ChatState.waiting_for_message:
+    global is_chatting
+    if is_chatting:
         await message.answer(Language(**await state.get_data()).get_string('chat_mode_help'))
     else:
         await message.answer(Language(**await state.get_data()).get_string('help'))
@@ -51,13 +48,15 @@ async def cmd_ping(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "chat")
 async def cb_chat(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(ChatState.waiting_for_message)
+    global is_chatting
+    is_chatting = True
     await callback.answer("")
     await callback.message.answer(Language(**await state.get_data()).get_string('chat'))
 
 @router.message(Command("stop"))
 async def cmd_stop(message: Message, state: FSMContext):
-    await state.clear()
+    global is_chatting
+    is_chatting = False
     await message.answer(Language(**await state.get_data()).get_string('stopped'))
 
 @router.callback_query(F.data == "settings")
@@ -79,10 +78,11 @@ async def cb_select_lang(callback: CallbackQuery, state: FSMContext):
 
 @router.message()
 async def echo(message: Message, state: FSMContext):
+    global is_chatting
     # Check if the user is in chat mode
-    if await state.get_state() == ChatState.waiting_for_message:
+    if is_chatting:
         user_message_data = {"user_id": message.from_user.id, "message": message.text}
-        response = requests.post(f"{URL}/gigachat/invoke/", json=user_message_data)
+        response = requests.post(f"{SERVE_URL}/gigachat/invoke/", json=user_message_data)
         if response.status_code == 200:
             print("User message sent successfully")
 
