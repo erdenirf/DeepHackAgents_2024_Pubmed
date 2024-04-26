@@ -2,4 +2,4 @@ research/html
 __pycache__/
 */cache
 venv/
-config.py
+.env

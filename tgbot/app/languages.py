@@ -11,9 +11,9 @@ class Language:
         if self.language == 'Eng':
             return {
                 'welcome': 'Hello! I am an AI to help you with the search of relevant medical articles on your topic, choose what you want to do',
-                'help': '/help - Get help\n/start - Call the main menu',
+                'help': '/help - Get help\n/menu - Call the main menu\n/start - Restart the bot',
                 'ping': 'Pong!',
-                'chat': 'Send me the topic you want to find an articles on',
+                'chat': 'You are now in AI chat mode! Send me the topic you want to find an articles on. To exit chat mode, type /stop',
                 'settings': 'Settings',
                 'change_lang': '🌐 Choose your language',
                 'change_lang_success': 'Language changed successfully!',
@@ -22,13 +22,15 @@ class Language:
                 'chat_btn': '📝 Chat',
                 'help_btn': '📚 Help',
                 'settings_btn': '⚙️ Settings',
+                'chat_error': 'There was some error, please try sending your request again',
+                'chat_mode_help': 'You are in chat mode, please send your request. To exit chat mode, type /stop',
             }
         elif self.language == 'Ru':
             return {
                 'welcome': 'Привет! Я ИИ для поиска актуальных медицинских статей по вашей теме, выберите что вы хотите сделать',
-                'help': '/help - Получить помощь\n/start - Вызвать главное меню',
+                'help': '/help - Получить помощь\n/menu - Вызвать главное меню\n/start - Перезапустить бота',
                 'ping': 'Понг!',
-                'chat': 'Напишите тему по которой хотите найти статьи',
+                'chat': 'Вы вошли в режим ИИ чата! Напишите тему по которой хотите найти статьи. Чтобы выйти из режима чата, напишите /stop',
                 'settings': 'Настройки',
                 'change_lang': '🌐 Выберите язык',
                 'change_lang_success': 'Язык успешно изменен!',
@@ -37,6 +39,8 @@ class Language:
                 'chat_btn': '📝 Чат',
                 'help_btn': '📚 Помощь',
                 'settings_btn': '⚙️ Настройки',
+                'chat_error': 'Произошла ошибка, пожалуйста, попробуйте отправить ваш запрос еще раз',
+                'chat_mode_help': 'Вы в режиме чата, пожалуйста, отправьте ваш запрос. Чтобы выйти из режима чата, напишите /stop',
             }
         else:
             return {}
