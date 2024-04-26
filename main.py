@@ -1,8 +1,10 @@
 import streamlit as st
 from langchain.chat_models.gigachat import GigaChat
+from typing import Optional, Type
 from langchain.chains import RetrievalQA
 import dotenv
 import os
+from langchain.pydantic_v1 import BaseModel, Field
 from services.vectorstore_connect import qdrant_vectorstore
 from langchain.tools import BaseTool
 from langchain.agents import (
@@ -21,31 +23,42 @@ except:
 
 GIGACHAT_API_CREDENTIALS = os.environ.get("GIGACHAT_API_CREDENTIALS")
 
+class SearchInput(BaseModel):
+    question: str = Field(
+        description="вопрос пользователя"
+    )
+
 class SearchTool(BaseTool):
     name = "search"
-    description = """Выполняет поиск квартиры в базе данных по параметрам.
-
-Нужно найти только двухкомнатные квартиры, то укажи {rooms_min: 2, rooms_max: 2}
-
-Нужно найти только студии, то укажи {rooms_min: 0, rooms_max: 0}
-
-Нужно найти только квартиры дешевле 20 миллионов, то укажи {price_max: 20000000}
-
-Нужно найти только квартиры дороже 10 миллионов, то укажи {price_min: 10000000}
+    description = """Выполняет поиск вопроса пользователя по медицине в базе данных 
 """
-#    args_schema: Type[BaseModel] = SearchInput
+    args_schema: Type[BaseModel] = SearchInput
 
     def _run(
         self,
+        question: str,
         run_manager=None
     ) -> str:
-        return "Узнай имя и телефон пользователя и вызови функцию call_manager снова"
+        msg = "Ищем в базе статей вопрос: {question} "
+        st.session_state.messages.append({"role": "assistant", "content": msg})
+        st.chat_message("assistant").write(msg)
+        result = qdrant_vectorstore.as_retriever().get_relevant_documents(question)
+        
+        result_string = "Найденные статьи:\n"
+        for item in result:
+            result_string += "\n" + item.page_content
+            result_string += "\n" + item.metadata['source']
+            result_string += "\n-----\n"
+        st.session_state.messages.append({"role": "assistant", "content": result_string})
+        st.chat_message("assistant").write(result_string)
+        return result_string
 
 giga = GigaChat(credentials=GIGACHAT_API_CREDENTIALS,
                 scope='GIGACHAT_API_CORP', 
                 verify_ssl_certs=False,
                 model = 'GigaChat-Pro-preview',
                 profanity_check=False,
+                timeout=600,
                 #streaming=True
                 )
 
