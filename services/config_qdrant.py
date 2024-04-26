@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from .embeddings_gigachat import MyGigaChatEmbeddingsCached
+from .embeddings_gigachat import MyGigaChatEmbeddingsCached, underlying_embeddings
 import dotenv
 import os
 
