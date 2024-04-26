@@ -1,5 +1,5 @@
 research/html
-*/__pycache__
+__pycache__/
 */cache
-venv
+venv/
 config.py
