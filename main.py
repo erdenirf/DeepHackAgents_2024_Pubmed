@@ -39,7 +39,7 @@ class SearchTool(BaseTool):
         question: str,
         run_manager=None
     ) -> str:
-        msg = "Ищем в базе статей вопрос: {question} "
+        msg = f"Ищем в базе статей вопрос: {question} "
         st.session_state.messages.append({"role": "assistant", "content": msg})
         st.chat_message("assistant").write(msg)
         result = qdrant_vectorstore.as_retriever().get_relevant_documents(question)
