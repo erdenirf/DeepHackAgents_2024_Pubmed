@@ -1,11 +1,13 @@
-import streamlit as st
+#!/usr/bin/env python
+from fastapi import FastAPI
+from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models.gigachat import GigaChat
-from typing import Optional, Type
+from langchain_core.prompts import PromptTemplate
 import dotenv
 import os
-from langchain.pydantic_v1 import BaseModel, Field
-from services.vectorstore_connect import qdrant_vectorstore
+from langserve import add_routes
 from langchain.tools import BaseTool
+from typing import Optional, Type
 from langchain.agents import (
     AgentExecutor,
     create_gigachat_functions_agent,
@@ -14,6 +16,9 @@ from langchain.agents.gigachat_functions_agent.base import (
     format_to_gigachat_function_messages,
 )
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain.pydantic_v1 import BaseModel, Field
+from services.vectorstore_connect import qdrant_vectorstore
+from langchain_core.runnables import RunnableParallel, RunnablePassthrough
 
 try:
     dotenv.load_dotenv()
@@ -39,17 +44,13 @@ class SearchTool(BaseTool):
         run_manager=None
     ) -> str:
         msg = f"Ищем в базе статей вопрос: {question} "
-        st.session_state.messages.append({"role": "assistant", "content": msg})
-        st.chat_message("assistant").write(msg)
         result = qdrant_vectorstore.as_retriever().get_relevant_documents(question)
         
         result_string = "Найденные статьи:\n\n"
         for index, item in enumerate(result):
             result_string += f"{index+1} \t" + item.page_content
             result_string += "\n" + item.metadata['source'] + "\n\n"
-            
-        st.session_state.messages.append({"role": "assistant", "content": result_string})
-        st.chat_message("assistant").write(result_string)
+
         return result_string
 
 giga = GigaChat(credentials=GIGACHAT_API_CREDENTIALS,
@@ -75,29 +76,40 @@ system = f"""Ты ИИ-ассистент и справочник по меди�
 """  # noqa
 chat_history = [SystemMessage(content=system)]
 
-with st.sidebar:
-    "Ответы от чат-бота носят справочный характер."
+app = FastAPI(
+  title="GigaChain Server",
+  version="1.0",
+  description="Простой API-сервер, использующий runnable-интерфейсы GigaChain",
+)
+retriever = qdrant_vectorstore.as_retriever()
 
-    "Ответы от ИИ-ассистента не являются врачебной рекомендацией, лучше обратиться в мед. организацию."
+def format_docs(docs):
+    return "\n\n".join(doc.page_content + "\n" + doc.metadata['source'] for doc in docs)
 
-st.title("💬 Мед чат-бот")
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "assistant", "content": "Вас приветствует мед чат-бот"}]
+template = """Ты ИИ-ассистент и справочник по медицине
 
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+Возьми ответ из указанных ниже источников научных статей по медицине:
 
-if question := st.chat_input():
-    st.session_state.messages.append({"role": "user", "content": question})
-    st.chat_message("user").write(question)
-    #result = qa(question)
-    result = agent_executor.invoke(
-        {
-            "chat_history": chat_history,
-            "input": question,
-        }
-    )
-    #result = giga(st.session_state["messages"])
-    msg = result["output"]
-    st.session_state.messages.append({"role": "assistant", "content": msg})
-    st.chat_message("assistant").write(msg)
+{context}
+
+Вопрос: {question}
+
+Также в ответе выведи источники из базы данных
+
+Полезный ответ:"""
+prompt = PromptTemplate.from_template(template)
+rag_chain = (
+    {"context": retriever | format_docs, "question": RunnablePassthrough()}
+    | prompt
+    | giga
+)
+add_routes(
+    app,
+    rag_chain,
+    path="/gigachat",
+) 
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="localhost", port=8000)
