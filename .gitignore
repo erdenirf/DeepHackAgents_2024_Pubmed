@@ -1,3 +1,5 @@
-__pycache__/
+research/html
+*/__pycache__
+*/cache
+venv
 config.py
-venv/
