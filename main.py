@@ -44,11 +44,11 @@ class SearchTool(BaseTool):
         st.chat_message("assistant").write(msg)
         result = qdrant_vectorstore.as_retriever().get_relevant_documents(question)
         
-        result_string = "Найденные статьи:\n"
-        for item in result:
-            result_string += "\n" + item.page_content
-            result_string += "\n" + item.metadata['source']
-            result_string += "\n-----\n"
+        result_string = "Найденные статьи:\n\n"
+        for index, item in enumerate(result):
+            result_string += f"{index+1} \t" + item.page_content
+            result_string += "\n" + item.metadata['source'] + "\n\n"
+            
         st.session_state.messages.append({"role": "assistant", "content": result_string})
         st.chat_message("assistant").write(result_string)
         return result_string
