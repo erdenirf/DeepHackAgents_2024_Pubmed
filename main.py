@@ -44,7 +44,7 @@ class SearchTool(BaseTool):
 giga = GigaChat(credentials=GIGACHAT_API_CREDENTIALS,
                 scope='GIGACHAT_API_CORP', 
                 verify_ssl_certs=False,
-                #model="GigaChat-Plus",
+                model = 'GigaChat-Pro-preview',
                 profanity_check=False,
                 #streaming=True
                 )
@@ -105,6 +105,6 @@ if question := st.chat_input():
         }
     )
     #result = giga(st.session_state["messages"])
-    msg = result['result']
+    msg = result["output"]
     st.session_state.messages.append({"role": "assistant", "content": msg})
     st.chat_message("assistant").write(msg)
