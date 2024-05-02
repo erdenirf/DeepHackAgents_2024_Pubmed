@@ -4,7 +4,7 @@ from typing import Optional, Type
 import dotenv
 import os
 from langchain.pydantic_v1 import BaseModel, Field
-from services.vectorstore_connect import qdrant_vectorstore
+from services.retrievers_ensemble_retriever import get_ensemble_retriver
 from langchain.tools import BaseTool
 from langchain.agents import (
     AgentExecutor,
@@ -38,18 +38,13 @@ class SearchTool(BaseTool):
         question: str,
         run_manager=None
     ) -> str:
-        msg = f"Ищем в базе статей вопрос: {question} "
-        st.session_state.messages.append({"role": "assistant", "content": msg})
-        st.chat_message("assistant").write(msg)
-        result = qdrant_vectorstore.as_retriever().get_relevant_documents(question)
+        result = get_ensemble_retriver().get_relevant_documents(question)
         
-        result_string = "Найденные статьи:\n\n"
+        result_string = "Agent Tool RAG: Найденные статьи:\n\n"
         for index, item in enumerate(result):
             result_string += f"{index+1} \t" + item.page_content
             result_string += "\n" + item.metadata['source'] + "\n\n"
             
-        st.session_state.messages.append({"role": "assistant", "content": result_string})
-        st.chat_message("assistant").write(result_string)
         return result_string
 
 giga = GigaChat(credentials=GIGACHAT_API_CREDENTIALS,
@@ -66,7 +61,7 @@ agent = create_gigachat_functions_agent(giga, tools)
 
 # AgentExecutor создает среду, в которой будет работать агент
 agent_executor = AgentExecutor(
-    agent=agent, tools=tools, verbose=False, return_intermediate_steps=False
+    agent=agent, tools=tools, verbose=False, return_intermediate_steps=True
 )
 system = f"""Ты ИИ-ассистент и справочник по медицине
 
@@ -90,7 +85,7 @@ for msg in st.session_state.messages:
 if question := st.chat_input():
     st.session_state.messages.append({"role": "user", "content": question})
     st.chat_message("user").write(question)
-    #result = qa(question)
+
     result = agent_executor.invoke(
         {
             "chat_history": chat_history,
@@ -99,5 +94,10 @@ if question := st.chat_input():
     )
     #result = giga(st.session_state["messages"])
     msg = result["output"]
+    details = result["intermediate_steps"]
+    if len(details) > 0:
+        tool_question, tool_answer = details[0]
+        st.session_state.messages.append({"role": "assistant", "content": tool_answer})
+        st.chat_message("assistant", avatar='🤖').write(tool_answer)
     st.session_state.messages.append({"role": "assistant", "content": msg})
     st.chat_message("assistant").write(msg)

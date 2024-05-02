@@ -4,3 +4,9 @@ __pycache__/
 venv/
 tgbot/.env
 config.py
+msd_parse/*
+research/msd/
+.env
+articles.json
+research/msd.json
+research/ru_sitemap.xml
