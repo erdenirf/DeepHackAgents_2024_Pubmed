@@ -11,7 +11,7 @@ class Language:
         if self.language == 'Eng':
             return {
                 'welcome': 'Hello! I am an AI to help you with the search of relevant medical articles on your topic, choose what you want to do',
-                'help': '/help - Get help\n/menu - Call the main menu\n/start - Restart the bot',
+                'help': '/menu - Call the main menu\n/start - Restart the bot',
                 'ping': 'Pong!',
                 'chat': 'You are now in AI chat mode! Send me the topic you want to find an articles on. To exit chat mode, type /stop',
                 'settings': 'Settings',
@@ -24,11 +24,13 @@ class Language:
                 'settings_btn': '⚙️ Settings',
                 'chat_error': 'There was some error, please try sending your request again',
                 'chat_mode_help': 'You are in chat mode, please send your request. To exit chat mode, type /stop',
+                'stopped' : 'Call /menu',
+                'restart' : 'There was some error, please restart the bot using /start'
             }
         elif self.language == 'Ru':
             return {
                 'welcome': 'Привет! Я ИИ для поиска актуальных медицинских статей по вашей теме, выберите что вы хотите сделать',
-                'help': '/help - Получить помощь\n/menu - Вызвать главное меню\n/start - Перезапустить бота',
+                'help': '/menu - Вызвать главное меню\n/start - Перезапустить бота',
                 'ping': 'Понг!',
                 'chat': 'Вы вошли в режим ИИ чата! Напишите тему по которой хотите найти статьи. Чтобы выйти из режима чата, напишите /stop',
                 'settings': 'Настройки',
@@ -41,6 +43,8 @@ class Language:
                 'settings_btn': '⚙️ Настройки',
                 'chat_error': 'Произошла ошибка, пожалуйста, попробуйте отправить ваш запрос еще раз',
                 'chat_mode_help': 'Вы в режиме чата, пожалуйста, отправьте ваш запрос. Чтобы выйти из режима чата, напишите /stop',
+                'stopped' : 'Вызовите /menu',
+                'restart' : 'Произошла какая-то ошибка, пожалуйста перезапустите бота используя /start'
             }
         else:
             return {}
