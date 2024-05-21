@@ -1,13 +1,12 @@
-#!/usr/bin/env python
-from fastapi import FastAPI
-from langchain.prompts import ChatPromptTemplate
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel  # Import the BaseModel class from Pydantic
 from langchain.chat_models.gigachat import GigaChat
-from langchain_core.prompts import PromptTemplate
+from typing import Optional, Type
 import dotenv
 import os
-from langserve import add_routes
+from langchain.pydantic_v1 import Field
+from services.retrievers_ensemble_retriever import get_ensemble_retriver
 from langchain.tools import BaseTool
-from typing import Optional, Type
 from langchain.agents import (
     AgentExecutor,
     create_gigachat_functions_agent,
@@ -16,9 +15,8 @@ from langchain.agents.gigachat_functions_agent.base import (
     format_to_gigachat_function_messages,
 )
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain.pydantic_v1 import BaseModel, Field
-from services.vectorstore_connect import qdrant_vectorstore
-from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+
+app = FastAPI()
 
 try:
     dotenv.load_dotenv()
@@ -43,10 +41,9 @@ class SearchTool(BaseTool):
         question: str,
         run_manager=None
     ) -> str:
-        msg = f"Ищем в базе статей вопрос: {question} "
-        result = qdrant_vectorstore.as_retriever().get_relevant_documents(question)
+        result = get_ensemble_retriver().get_relevant_documents(question)
         
-        result_string = "Найденные статьи:\n\n"
+        result_string = "Agent Tool RAG: Найденные статьи:\n\n"
         for index, item in enumerate(result):
             result_string += f"{index+1} \t" + item.page_content
             result_string += "\n" + item.metadata['source'] + "\n\n"
@@ -67,7 +64,7 @@ agent = create_gigachat_functions_agent(giga, tools)
 
 # AgentExecutor создает среду, в которой будет работать агент
 agent_executor = AgentExecutor(
-    agent=agent, tools=tools, verbose=False, return_intermediate_steps=False
+    agent=agent, tools=tools, verbose=False, return_intermediate_steps=True
 )
 system = f"""Ты ИИ-ассистент и справочник по медицине
 
@@ -76,40 +73,22 @@ system = f"""Ты ИИ-ассистент и справочник по меди�
 """  # noqa
 chat_history = [SystemMessage(content=system)]
 
-app = FastAPI(
-  title="GigaChain Server",
-  version="1.0",
-  description="Простой API-сервер, использующий runnable-интерфейсы GigaChain",
-)
-retriever = qdrant_vectorstore.as_retriever()
-
-def format_docs(docs):
-    return "\n\n".join(doc.page_content + "\n" + doc.metadata['source'] for doc in docs)
-
-template = """Ты ИИ-ассистент и справочник по медицине
-
-Возьми ответ из указанных ниже источников научных статей по медицине:
-
-{context}
-
-Вопрос: {question}
-
-Также в ответе выведи источники из базы данных
-
-Полезный ответ:"""
-prompt = PromptTemplate.from_template(template)
-rag_chain = (
-    {"context": retriever | format_docs, "question": RunnablePassthrough()}
-    | prompt
-    | giga
-)
-add_routes(
-    app,
-    rag_chain,
-    path="/gigachat",
-) 
+@app.post("/ask/")
+async def ask_question(question: SearchInput):
+    result = agent_executor.invoke(
+        {
+            "chat_history": chat_history,
+            "input": question.question,
+        }
+    )
+    msg = result["output"]
+    api_response = msg
+    details = result["intermediate_steps"]
+    if len(details) > 0:
+        tool_question, tool_answer = details[0]
+        api_response = tool_answer + '\nОтвет от ИИ:\n' + msg
+    return {"response": api_response}
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
